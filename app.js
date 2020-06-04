@@ -9,14 +9,73 @@ var usersRouter = require('./routes/users');
 
 /*  Book code */
 var mongoose = require('mongoose');
-mongoose.connect('mongodb'); // localhost/book
+mongoose.connect('mongodb://localhost/book'); // localhost/book
 
 var uuid = require('node-uuid');
-var Client = require('../lib/models/client');
-var AuthCode = require('../lib/models/authcode');
+//var Client = require('../lib/models/client');
+//var AuthCode = require('../lib/models/authcode');
 
 usersRouter.get('/authorize', function(req, res, next) {
+  var responseType = req.query.response_type;
+  var cliendId = req.query.client_id;
+  var redirectUri = req.query.redirect_uri;
+  var scope = req.query.scope;
+  var state = req.query.state;
 
+  if (!responseType) {
+    // cancel the request
+  }
+
+  if (responseType !== 'code') {
+    // notify unsupported response type
+  }
+
+  if(!clientId) {
+    // Cancel the request
+  }
+
+  Client.findOne({
+    clientId: clientId
+  }, function(err, client) {
+    if (err) {
+      // handle the error by passing it to the middleware
+      next(err);
+    }
+
+    if (!client) {
+      // cancel the request client doesn't exist.
+    }
+
+    if (redirectUri !== client.redirectUri) {
+      // cancel the request
+    }
+
+    if (scope !== client.scope) {
+      // handle the scope
+    }
+
+    var authCode = new AuthCode ({
+      cliendId: clientId,
+      userId: client.userId,
+      redirectUri: redirectUri
+    });
+
+    authCode.save();
+
+    var response = {
+      state: state,
+      code: authCode.code
+    };
+
+    if(redirectUrl) {
+      var redirect = redirectUrl +
+      '?code=' + response.code +
+      (state === undefined ? '' : '&state=' + state);
+      red.redirect(redirect)
+    } else {
+      res.json(response);
+    }
+  });
 });
 // End book code.
 
