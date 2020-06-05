@@ -12,8 +12,82 @@ var mongoose = require('mongoose');
 mongoose.connect('mongodb://localhost/book'); // localhost/book
 
 var uuid = require('node-uuid');
-//var Client = require('../lib/models/client');
-//var AuthCode = require('../lib/models/authcode');
+
+var Client = require('../lib/models/client');
+var AuthCode = require('../lib/models/authcode');
+var RefreshToken = require('../lib/models/refreshToken');
+var Token = require('../lib/models/token');
+
+// for issuing access tokens
+usersRouter.post('/token', function(req, res) {
+   var grantType = req.body.grant_Type;
+   var authCode = req.body.code;
+   var redirectUri = req.body.redirect_uri;
+   var cliendId = req.body.client_id;
+
+   if (!grantType) {
+     // No grant type passed - cancel the request
+   }
+
+   if(!grantType === 'authorization_code') {
+     AuthCode.findOne({
+       code: AuthCode
+     }, function(err, code) {
+
+      if (err) {
+        // handle the error
+      }
+      
+      if (!code) {
+        // no valid authorization code provided - cancel
+      }
+      
+      if (code.consumed) {
+        // the code got consumed already - cancel
+      }
+
+      code.consumed = true;
+      code.save();
+      
+      if (code.redirectUri !== redirectUri) {
+         // cancel the request
+      }
+      
+      // validate the client id - an extra security measure
+      Client.findOne({ 
+         clientId: clientId 
+        }, function( error, client) {
+          if (error) {
+            // the client id provided was a mismatch or does not exist
+          }
+          
+          if (!client) {
+            // the client id provided was a mismatch or does not exist
+          }
+          
+          var _refreshToken = new RefreshToken({userId: code.userId });
+          _refreshToken.save();
+          
+          var _token = new Token({ 
+            refreshToken: _refreshToken.token,
+            userId: code.userId });
+
+            _token.save();
+            
+            // send the new token to the consumer
+            var response = {
+               access_token: _token.accessToken,
+               refresh_token: _token.refreshToken,  // The just created refresh token.
+               expires_in: _token.expiresIn,
+               token_type: _token.tokenType };
+               
+            res.json(response);
+        });
+     });
+   }
+
+});
+
 
 usersRouter.get('/authorize', function(req, res, next) {
   var responseType = req.query.response_type;
@@ -71,7 +145,7 @@ usersRouter.get('/authorize', function(req, res, next) {
       var redirect = redirectUrl +
       '?code=' + response.code +
       (state === undefined ? '' : '&state=' + state);
-      red.redirect(redirect)
+      res.redirect(redirect)
     } else {
       res.json(response);
     }
